@@ -4,31 +4,29 @@ from flask_mail import Mail, Message
 from datetime import datetime
 import os
 
-# --- Application and Database Configuration ---
+
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here_for_security'
 
-# Set absolute path for the database file to prevent location errors
-# CẤU HÌNH MỚI (PostgreSQL - Dùng biến môi trường)
-# Đọc URL database từ biến môi trường của Render
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///reservations.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Xử lý trường hợp Render sử dụng schema 'postgres://' thay vì 'postgresql://'
+
 if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
     app.config['SQLALCHEMY_DATABASE_URI'] = app.config['SQLALCHEMY_DATABASE_URI'].replace('postgres://', 'postgresql://')
 
-# Đảm bảo bạn đã import os ở đầu file
+
 import os
 
-# --- FLASK-MAIL CONFIGURATION ---
+
 app.config['MAIL_SERVER'] = 'smtp.materes.com'
 app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
-# !!! REPLACE WITH YOUR SENDING EMAIL ADDRESS !!!
+
 app.config['MAIL_USERNAME'] = 'contact@materes.com'
-# !!! REPLACE WITH YOUR APP PASSWORD (highly recommended for Gmail) !!!
+
 app.config['MAIL_PASSWORD'] = 'Chipchip_2017'
 app.config['MAIL_DEFAULT_SENDER'] = 'contact@materes.com'
 
@@ -36,7 +34,7 @@ db = SQLAlchemy(app)
 mail = Mail(app)
 
 
-# --- Reservation Model Definition (FINAL) ---
+
 class Reservation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -54,12 +52,12 @@ class Reservation(db.Model):
         return f'<Reservation {self.id} - {self.name} - {self.date} {self.time}>'
 
 
-# --- Create Database Tables if they don't exist ---
+
 with app.app_context():
     db.create_all()
 
 
-# --- ADMIN EMAIL NOTIFICATION FUNCTION ---
+
 def send_admin_notification_email(reservation_data):
     subject = f'NEW RESERVATION PENDING #{reservation_data.id} - {reservation_data.name}'
     recipient = app.config['MAIL_USERNAME']
@@ -126,7 +124,7 @@ def send_confirmation_email_to_customer(reservation_data):
         print(f"ERROR SENDING CUSTOMER CONFIRMATION EMAIL: {e}")
 
 
-# --- CUSTOMER DENIAL EMAIL FUNCTION (HÀM MỚI) ---
+
 def send_denial_email_to_customer(reservation_data):
     if not reservation_data.email:
         print(f"DEBUG: Did not send denial email to customer #{reservation_data.id}. No email provided.")
@@ -156,7 +154,7 @@ def send_denial_email_to_customer(reservation_data):
         print(f"ERROR SENDING CUSTOMER DENIAL EMAIL: {e}")
 
 
-# --- Reservation Handling Route (GET/POST) ---
+
 @app.route('/', methods=['GET', 'POST'])
 def reservation():
     if request.method == 'POST':
@@ -173,12 +171,12 @@ def reservation():
 
             special_request = request.form.get('special_request')
 
-            # Validation: All required fields must be present
+
             if not (name and phone and email and date and time and guests > 0):
                 flash('Please fill in all required fields completely and correctly.', 'error')
                 return redirect(url_for('reservation'))
 
-            # Save to database
+           
             new_reservation = Reservation(
                 name=name,
                 phone=phone,
@@ -193,7 +191,7 @@ def reservation():
             db.session.add(new_reservation)
             db.session.commit()
 
-            # Send admin notification email
+       
             send_admin_notification_email(new_reservation)
 
             flash(
@@ -210,14 +208,14 @@ def reservation():
     return render_template('reservation.html')
 
 
-# --- Admin Route ---
+
 @app.route('/admin')
 def admin():
     all_reservations = Reservation.query.order_by(Reservation.id.desc()).all()
     return render_template('admin.html', reservations=all_reservations)
 
 
-# --- CONFIRM BOOKING Route ---
+
 @app.route('/confirm/<int:res_id>', methods=['POST'])
 def confirm_reservation(res_id):
     reservation_to_confirm = Reservation.query.get_or_404(res_id)
@@ -258,9 +256,9 @@ def delete_reservation(res_id):
     return redirect(url_for('admin'))
 
 
-# ... (Phần trên không đổi) ...
 
-# --- DENY BOOKING Route (HÀM MỚI) ---
+
+
 @app.route('/deny/<int:res_id>', methods=['POST'])
 def deny_reservation(res_id):
     reservation_to_deny = Reservation.query.get_or_404(res_id)
@@ -286,8 +284,9 @@ def deny_reservation(res_id):
     return redirect(url_for('admin'))
 
 
-# ... (Các route khác không đổi) ...
+
 
 
 if __name__ == '__main__':
+
     app.run()
